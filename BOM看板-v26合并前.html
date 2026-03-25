@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./js/vue.global.js"></script>
+    <script src="./js/tailwindcss.js"></script>
+    <script src="./js/phosphor-icons.js"></script>
+    <link href="./js/css.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans', 'Noto Sans SC', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
+                    },
+                    colors: {
+                        deepSpaceBlue: '#002733',
+                        vividGreen: '#008C82',
+                        electricNeon: '#C2FE06',
+                        brandCoral: '#E67364',
+                        brandOrange: '#FAAA3C',
+                        brandBeige: '#FAD2AA',
+                        brandBlue: '#8CBEE6',
+                        brandViolet: '#C882BE',
+                        brandLavender: '#DCCDF0',
+                        trafficRed: '#DA0C1F',
+                        trafficAmber: '#FCCD22',
+                        trafficGreen: '#63A844',
+                        dashboardBg: '#F4F7F9'
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 39, 51, 0.04)',
+                        'card': '0 10px 30px -5px rgba(0, 39, 51, 0.05)',
+                        'neon': '0 0 12px rgba(194, 254, 6, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans', 'Noto Sans SC', sans-serif;
+            background-color: theme('colors.dashboardBg');
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #008C82;
+        }
+
+        .chart-bar-anim {
+            transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease, filter 0.2s ease;
+        }
+
+        .card-header-border {
+            position: relative;
+        }
+
+        .card-header-border::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: theme('colors.vividGreen');
+            border-radius: 2px;
+        }
+        
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Total & Target 柱状图条纹遮罩样式 */
+        .bar-pattern-overlay {
+            position: relative;
+        }
+        .bar-pattern-overlay::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.25) 0, rgba(255, 255, 255, 0.25) 4px, transparent 4px, transparent 8px);
+            pointer-events: none;
+            border: 2px dashed rgba(0, 39, 51, 0.3);
+            border-bottom: none;
+            border-radius: inherit;
+        }
+    </style>
+
+
+
+
+
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:e636b965dfda43c1b4c0b1bfd6632cb2 msdt:dt="string"></mso:e636b965dfda43c1b4c0b1bfd6632cb2>
+<mso:eDiscoveryTag msdt:dt="string"></mso:eDiscoveryTag>
+<mso:TaxCatchAll msdt:dt="string">1;#0.1 Initial category|1c8c29b4-7b14-4375-b4f8-8d7d65cf16e2</mso:TaxCatchAll>
+<mso:RevIMBCS msdt:dt="string">1;#0.1 Initial category|1c8c29b4-7b14-4375-b4f8-8d7d65cf16e2</mso:RevIMBCS>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
+
+<body
+    class="h-screen w-screen overflow-hidden text-slate-800 flex flex-col selection:bg-vividGreen selection:text-white">
+    <div id="app" class="flex flex-col h-full w-full">
+        <main class="flex-1 flex overflow-hidden relative">
+
+            <div class="flex w-full h-full">
+                
+                <aside class="w-64 bg-white border-r border-slate-200 h-full flex-shrink-0 hidden lg:flex flex-col overflow-y-auto shadow-sm z-10 relative">
+                    <div class="p-6">
+                        
+                        <div class="mb-8">
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2 flex items-center">
+                                <i class="ph-fill ph-target mr-1.5 text-slate-300"></i> Targets Status
+                            </div>
+                            <ul class="space-y-1">
+                                <li>
+                                    <a href="#anchor-volume-tracker" 
+                                       class="px-3 py-2 rounded-lg text-sm font-bold transition-all block"
+                                       :class="activeSection === 'anchor-volume-tracker' ? 'text-vividGreen bg-vividGreen/10' : 'text-slate-600 hover:text-vividGreen hover:bg-vividGreen/5'">
+                                        Volume And Sales
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#anchor-overview" 
+                                       class="px-3 py-2 rounded-lg text-sm font-bold transition-all block"
+                                       :class="activeSection === 'anchor-overview' ? 'text-vividGreen bg-vividGreen/10' : 'text-slate-600 hover:text-vividGreen hover:bg-vividGreen/5'">
+                                        Annual Cost Target
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#anchor-entity" 
+                                       class="px-3 py-2 rounded-lg text-sm font-bold transition-all block"
+                                       :class="activeSection === 'anchor-entity' ? 'text-vividGreen bg-vividGreen/10' : 'text-slate-600 hover:text-vividGreen hover:bg-vividGreen/5'">
+                                        Entity Targets Status
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#anchor-cost-attr-stats" 
+                                       class="px-3 py-2 rounded-lg text-sm font-bold transition-all block"
+                                       :class="activeSection === 'anchor-cost-attr-stats' ? 'text-vividGreen bg-vividGreen/10' : 'text-slate-600 hover:text-vividGreen hover:bg-vividGreen/5'">
+                                        Cost Attribute Statistics
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2 flex items-center">
+                                <i class="ph-fill ph-kanban mr-1.5 text-slate-300"></i> Measure Tracking
+                            </div>
+                            <ul class="space-y-1">
+                                <li>
+                                    <a href="#anchor-status-overview" 
+                                       class="px-3 py-2 rounded-lg text-sm font-bold transition-all block"
+                                       :class="activeSection === 'anchor-status-overview' ? 'text-vividGreen bg-vividGreen/10' : 'text-slate-600 hover:text-vividGreen hover:bg-vividGreen/5'">
+                                        Status Overview
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#anchor-cost-development" 
+                                       class="px-3 py-2 rounded-lg text-sm font-bold transition-all block"
+                                       :class="activeSection === 'anchor-cost-development' ? 'text-vividGreen bg-vividGreen/10' : 'text-slate-600 hover:text-vividGreen hover:bg-vividGreen/5'">
+                                        Cost Target Development
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth w-full max-w-[1440px] mx-auto">
+
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-4 pb-4 border-b border-slate-200/60">
+                        <div>
+                            <h2 class="text-3xl font-black text-deepSpaceBlue tracking-tight flex items-center">
+                                <i class="ph-fill ph-circles-three text-vividGreen mr-3 text-2xl opacity-90"></i>
+                                360° Cost Program Dashboard
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-2 font-medium tracking-wide">360°成本项目仪表盘</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center w-full">
+                        <div class="bg-vividGreen/10 px-5 py-2.5 rounded-xl flex items-center border border-vividGreen/20 shadow-sm">
+                            <i class="ph-fill ph-target text-vividGreen mr-2.5 text-xl"></i>
+                            <h2 class="text-lg font-black text-deepSpaceBlue uppercase tracking-widest">Targets Status</h2>
+                        </div>
+                        <div class="ml-4 flex-1 h-[2px] bg-slate-200/60 rounded-full"></div>
+                    </div>
+
+                    <div id="anchor-volume-tracker" class="bg-white rounded-2xl shadow-card border border-slate-100 p-8 overflow-hidden">
+                        <div
+                            class="flex justify-between items-center mb-8 border-b border-slate-100 pb-4 card-header-border">
+                            <h3
+                                class="font-extrabold text-xl text-deepSpaceBlue tracking-wide flex items-center uppercase">
+                                <i class="ph-fill ph-chart-bar text-vividGreen mr-2.5 text-2xl"></i>
+                                Volume And Sales Tracking
+                            </h3>
+                        </div>
+
+                        <div class="relative h-[360px] w-full">
+                            <div class="absolute inset-0 pl-16 pb-12 pt-8 flex flex-col justify-between z-0">
+                                <div v-for="val in yAxisTicks.ticks" :key="val" class="w-full relative group">
+                                    <div class="border-t border-slate-100 w-full absolute top-0 transition-colors group-hover:border-slate-200"
+                                        :class="{'border-slate-300 border-t-2 z-10': val === yAxisTicks.minTick / 1000}">
+                                    </div>
+                                    <span
+                                        class="absolute -left-16 -top-2.5 w-12 text-right text-[12px] text-slate-400 font-bold font-mono"
+                                        :class="{'text-slate-500': val === yAxisTicks.minTick / 1000}">
+                                        {{ val }}k
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="absolute inset-0 pl-16 pb-12 pt-8 flex items-end justify-around z-10">
+                                <div v-for="(data, year) in volumeData" :key="year"
+                                    class="flex flex-col items-center justify-end group flex-1 h-full relative cursor-pointer">
+
+                                    <div
+                                        class="absolute inset-y-0 w-[120%] bg-slate-50/50 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity z-0 pointer-events-none -translate-x-1/2 left-1/2">
+                                    </div>
+
+                                    <div class="opacity-0 group-hover:opacity-100 transition-all duration-200 absolute z-50 pointer-events-none shadow-lg bg-deepSpaceBlue text-white p-4 rounded-xl flex flex-col gap-2.5 min-w-[200px]"
+                                        style="top: 25%; left: 50%; transform: translateX(-50%);">
+                                        <div class="font-black text-lg border-b border-slate-700 pb-2 mb-1 text-center">
+                                            {{ year }}</div>
+                                        <div class="flex items-center justify-between text-[13px] font-medium">
+                                            <div class="flex items-center"><span
+                                                    class="w-3 h-3 rounded-full bg-vividGreen mr-2"></span> Production
+                                            </div>
+                                            <span class="font-mono font-bold">{{ formatNumber(data.production) }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-[13px] font-medium">
+                                            <div class="flex items-center"><span
+                                                    class="w-3 h-3 rounded-full bg-brandBlue mr-2"></span> Sales</div>
+                                            <span class="font-mono font-bold">{{ formatNumber(data.sales) }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="flex space-x-2 sm:space-x-4 items-end justify-center h-full w-full z-10 px-2">
+                                        <div class="w-10 sm:w-14 bg-vividGreen rounded-t-md hover:brightness-110 shadow-sm chart-bar-anim relative"
+                                            :style="{height: Math.max(0, (data.production - yAxisTicks.minTick) / (yAxisTicks.maxTick - yAxisTicks.minTick)) * 100 + '%'}">
+                                            <div
+                                                class="absolute -top-6 w-full text-center text-[12px] font-bold text-slate-500 font-mono group-hover:text-vividGreen transition-colors">
+                                                {{ data.production / 1000 }}k
+                                            </div>
+                                        </div>
+                                        <div class="w-10 sm:w-14 bg-brandBlue rounded-t-md hover:brightness-105 shadow-sm chart-bar-anim relative"
+                                            :style="{height: Math.max(0, (data.sales - yAxisTicks.minTick) / (yAxisTicks.maxTick - yAxisTicks.minTick)) * 100 + '%'}">
+                                            <div
+                                                class="absolute -top-6 w-full text-center text-[12px] font-bold text-slate-500 font-mono group-hover:text-brandBlue transition-colors">
+                                                {{ data.sales / 1000 }}k
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="absolute -bottom-8 w-full text-center text-[14px] font-extrabold text-slate-500 transition-colors group-hover:text-deepSpaceBlue">
+                                        {{ year }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center mt-4 pt-6 space-x-12 border-t border-slate-50">
+                            <div class="flex items-center text-[14px] font-bold text-slate-600">
+                                <span class="w-4 h-4 bg-vividGreen rounded shadow-sm mr-3"></span> Production Volume
+                            </div>
+                            <div class="flex items-center text-[14px] font-bold text-slate-600">
+                                <span class="w-4 h-4 bg-brandBlue rounded shadow-sm mr-3"></span> Sales Volume
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="anchor-overview"
+                        class="bg-white border border-slate-100 rounded-2xl shadow-card p-8 overflow-hidden text-slate-800 relative">
+                        <div class="flex justify-between items-end mb-8 border-b border-slate-100 pb-4 card-header-border">
+                            <h3
+                                class="font-extrabold text-xl tracking-wide text-deepSpaceBlue uppercase flex items-center">
+                                <i class="ph-fill ph-trend-down text-vividGreen mr-2.5 text-2xl"></i>
+                                Overview of annual cost target 
+                            </h3>
+                            
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-bold text-slate-500">Entity:</span>
+                                <select v-model="selectedOverviewEntity" class="bg-slate-50 border border-slate-200 text-deepSpaceBlue text-sm rounded-lg focus:ring-vividGreen focus:border-vividGreen block px-3 py-1.5 font-bold outline-none cursor-pointer hover:border-vividGreen transition-colors">
+                                    <option value="VWA">VWA</option>
+                                    <option value="VCIC">VCIC</option>
+                                    <option value="DSSO">DSSO</option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="flex-1 relative h-[420px] mt-2 pl-4 pr-4">
+                                <div class="absolute right-0 top-0 text-[11px] text-slate-400 font-bold tracking-wider z-10">[Mio RMB]</div>
+
+                                <div class="absolute top-12 bottom-12 left-16 right-0">
+                                    <div v-for="val in costYAxisTicks.ticks" :key="'y_cost_'+val"
+                                        class="absolute w-full flex items-center z-0 transition-all duration-500"
+                                        :class="val === 0 ? 'border-t-2 border-slate-200' : 'border-t border-slate-100 border-dashed'"
+                                        :style="{ bottom: ((val/costYAxisTicks.maxTick)*100) + '%' }">
+                                        <span
+                                            class="absolute -left-14 text-right text-[12px] text-slate-400 font-bold font-mono w-10 translate-y-[-50%]">
+                                            {{ val }}
+                                        </span>
+                                    </div>
+
+                                    <div class="absolute w-full flex items-center z-10" style="bottom: 72%;">
+                                        <div
+                                            class="absolute -left-14 w-[calc(100%+3.5rem)] border-t border-dashed border-brandBlue/50">
+                                        </div>
+                                    </div>
+
+                                    <div class="absolute w-full flex items-center z-10" style="bottom: 56%;">
+                                        <div
+                                            class="absolute -left-14 w-[calc(100%+3.5rem)] border-t border-dashed border-vividGreen/40">
+                                        </div>
+                                    </div>
+
+                                    <div class="absolute inset-0 flex items-end justify-around z-20 pt-10">
+                                        <div v-for="(data, year) in costData" :key="'cd_'+year"
+                                            class="flex flex-col items-center justify-end w-24 h-full relative group">
+
+                                            <div v-if="year === '2030'"
+                                                class="absolute w-[120%] z-0 flex flex-col items-center justify-start pt-3 bg-brandBlue/5 border-t-2 border-brandBlue/40 rounded-t-md transition-all duration-500"
+                                                :style="{ bottom: ((data.total/costYAxisTicks.maxTick)*100) + '%', top: '10%' }">
+                                                <div
+                                                    class="text-[10px] text-brandBlue font-bold uppercase tracking-wide text-center">
+                                                    Target<br><span
+                                                        class="text-[14px] text-deepSpaceBlue font-black mt-1 block">TBD</span>
+                                                </div>
+                                            </div>
+
+                                            <div v-if="year === '2028'"
+                                                class="absolute w-[130%] z-20 flex flex-col items-center pointer-events-none transition-all duration-500"
+                                                :style="{ bottom: `calc(${ (data.total/costYAxisTicks.maxTick)*100 }% - 35px)` }">
+                                                <div
+                                                    class="text-[10px] text-vividGreen font-bold uppercase tracking-wide text-center mb-1.5">
+                                                    Target<br><span
+                                                        class="text-[14px] text-deepSpaceBlue font-black block">TBD</span>
+                                                </div>
+                                                <div
+                                                    class="w-full h-[70px] border-2 border-dashed border-vividGreen/30 rounded-full bg-vividGreen/5">
+                                                </div>
+                                            </div>
+
+                                            <div class="text-center text-deepSpaceBlue font-mono font-black text-[18px] mb-2 relative z-30 transition-transform group-hover:-translate-y-1"
+                                                :class="{ 'mt-6': year === '2028' || year === '2030' }">
+                                                ¥{{ data.total }} Mio
+                                            </div>
+
+                                            <div class="w-[70%] flex flex-col justify-end transition-all duration-500 relative z-10 shadow-sm group-hover:scale-105 origin-bottom"
+                                                :style="{height: (data.total/costYAxisTicks.maxTick)*100 + '%'}">
+                                                <div v-for="(segment, index) in costDrivers"
+                                                    :key="'seg_'+year+'_'+segment.id"
+                                                    class="w-full border-b border-white hover:brightness-110 hover:shadow-lg transition-all cursor-pointer relative"
+                                                    :class="{ 'rounded-t-md': index === 0 }"
+                                                    :style="{ height: data.total > 0 ? (data.values[segment.id] / data.total) * 100 + '%' : '0%', backgroundColor: segment.color }"
+                                                    :title="segment.name + ': ' + (data.values[segment.id] || 0).toFixed(1)">
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                class="absolute top-full pt-4 w-full text-center text-[14px] font-extrabold text-slate-500 group-hover:text-deepSpaceBlue transition-colors">
+                                                {{ year }}
+                                                <div v-if="year === '2028'"
+                                                    class="text-[10px] font-bold text-vividGreen tracking-wider mt-1 uppercase">
+                                                    EBIT BEP</div>
+                                                <div v-if="year === '2030'"
+                                                    class="text-[10px] font-bold text-brandBlue tracking-wider mt-1 uppercase">
+                                                    Cum. Surplus</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="w-48 flex flex-col justify-center space-y-3 pl-8 border-l border-slate-100 py-4 bg-slate-50/50 rounded-xl mr-4">
+                                <h4
+                                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-2">
+                                    Legend</h4>
+                                <div v-for="segment in costDrivers" :key="'leg_'+segment.id"
+                                    class="flex items-center space-x-3.5 group cursor-pointer">
+                                    <span
+                                        class="w-4 h-4 rounded shadow-sm transition-transform group-hover:scale-110 border border-black/5"
+                                        :style="{ backgroundColor: segment.color }"></span>
+                                    <span
+                                        class="text-[13px] font-bold text-slate-600 group-hover:text-deepSpaceBlue transition-colors">
+                                        {{ segment.name }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="anchor-entity" class="space-y-8">
+                        <div>
+                            <div v-if="filteredCompanyData.length === 0"
+                                class="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center text-slate-500 shadow-sm">
+                                <div
+                                    class="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="ph-fill ph-buildings text-4xl text-slate-300"></i>
+                                </div>
+                                <p class="font-bold text-lg">Please select at least one entity company</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
+                                <div v-for="company in filteredCompanyData" :key="company.name"
+                                    class="bg-white rounded-2xl border border-slate-200 p-6 shadow-card hover:shadow-lg transition-all duration-300 relative overflow-hidden group hover:-translate-y-1">
+
+                                    <div class="absolute top-0 left-0 w-1.5 h-full transition-colors duration-500"
+                                        :class="getStatusColor(company.rate)"></div>
+
+                                    <div class="flex justify-between items-start mb-5 pl-2">
+                                        <h4 class="font-black text-2xl text-deepSpaceBlue tracking-tight">{{ company.name }}
+                                        </h4>
+                                        <span
+                                            class="px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wide border shadow-sm"
+                                            :class="getStatusBadgeClass(company.rate)">
+                                            {{ getStatusText(company.rate) }}
+                                        </span>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4 mb-6 pl-2">
+                                        <div>
+                                            <div
+                                                class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                                                Target (Mio RMB)</div>
+                                            <div class="font-mono font-bold text-slate-600 text-lg">{{
+                                                formatNumber(company.target) }}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div
+                                                class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                                                Actual (Mio RMB)</div>
+                                            <div class="font-mono font-black text-deepSpaceBlue text-2xl">{{
+                                                formatNumber(company.actual) }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="relative pt-4 pl-2 border-t border-slate-100">
+                                        <div class="flex mb-2 items-center justify-between">
+                                            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Progress
+                                            </div>
+                                            <div class="text-sm font-black font-mono" :class="getTextColor(company.rate)">{{
+                                                company.rate }}%</div>
+                                        </div>
+                                        <div class="overflow-hidden h-3 text-xs flex rounded-full bg-slate-100">
+                                            <div :style="{ width: Math.min(company.rate, 100) + '%' }"
+                                                class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-1000 ease-out"
+                                                :class="getStatusBgColor(company.rate)">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="anchor-cost-attr-stats"
+                        class="bg-white rounded-2xl shadow-card border border-slate-200 flex flex-col min-h-[450px] overflow-hidden">
+
+                        <div
+                            class="px-6 py-5 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 bg-slate-50">
+                            <h4
+                                class="font-extrabold text-xl tracking-wide text-deepSpaceBlue uppercase flex items-center">
+                                <i class="ph-fill ph-table text-vividGreen mr-2.5 text-2xl"></i>
+                                COST ATTRIBUTE  Statistics
+                            </h4>  
+                        </div>
+
+                        <div class="border-b border-slate-200 overflow-x-auto bg-white">
+                            <div class="flex min-w-max px-4 pt-2">
+                                <button v-for="cat in categories" :key="cat.code" @click="activeCategoryTab = cat.code"
+                                    class="px-6 py-4 transition-all relative flex flex-col items-center justify-center group"
+                                    :class="activeCategoryTab === cat.code ? 'text-vividGreen' : 'text-slate-500 hover:text-deepSpaceBlue'">
+                                    <span class="block text-base font-black transition-colors">{{ cat.code }}</span>
+                                    <span class="text-[11px] font-bold mt-1 opacity-80 uppercase tracking-widest">{{
+                                        cat.nameCN }}</span>
+                                    <div class="absolute bottom-0 left-0 w-full h-1 rounded-t-md transition-all duration-300"
+                                        :class="activeCategoryTab === cat.code ? 'bg-vividGreen scale-x-100' : 'bg-transparent scale-x-0 group-hover:bg-slate-200 group-hover:scale-x-100'">
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto flex-1 bg-white p-6">
+                            <div class="mb-4 flex items-center">
+                                <span class="w-3 h-3 rounded shadow-sm mr-2"
+                                    :style="{ backgroundColor: getDriverColor(activeCategoryTab) }"></span>
+                                <span class="font-bold text-slate-600 tracking-wide">{{
+                                    getCategoryName(activeCategoryTab) }} Data Overview</span>
+                            </div>
+                            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                <table class="w-full text-sm text-left">
+                                    <thead
+                                        class="text-xs text-deepSpaceBlue uppercase tracking-widest bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th class="px-6 py-4 font-black">Company</th>
+                                            <th class="px-6 py-4 font-black text-right">Target (Mio RMB)</th>
+                                            <th class="px-6 py-4 font-black text-right">Actual (Mio RMB)</th>
+                                            <th class="px-6 py-4 font-black text-center w-64">Progress</th>
+                                            <th class="px-6 py-4 font-black text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr v-if="currentCategoryData.length === 0">
+                                            <td colspan="5"
+                                                class="px-6 py-16 text-center text-slate-500 font-bold bg-slate-50/50 text-lg">
+                                                <i
+                                                    class="ph-fill ph-file-dashed text-4xl block mb-2 text-slate-300"></i>
+                                                暂无符合当前筛选条件的数据
+                                            </td>
+                                        </tr>
+                                        <tr v-for="row in currentCategoryData" :key="row.company"
+                                            class="hover:bg-slate-50 transition-colors">
+                                            <td class="px-6 py-4 font-black text-deepSpaceBlue text-base">{{ row.company
+                                                }}</td>
+                                            <td
+                                                class="px-6 py-4 text-right font-mono font-bold text-slate-500 text-base">
+                                                {{ formatNumber(row.target) }}</td>
+                                            <td
+                                                class="px-6 py-4 text-right font-mono font-black text-deepSpaceBlue text-lg">
+                                                {{ formatNumber(row.actual) }}</td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center justify-center space-x-4">
+                                                    <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div class="h-full rounded-full transition-all duration-1000 ease-out"
+                                                            :class="getStatusBgColor(row.rate)"
+                                                            :style="{width: Math.min(row.rate, 100) + '%'}"></div>
+                                                    </div>
+                                                    <span class="text-sm font-black font-mono w-14 text-right"
+                                                        :class="getTextColor(row.rate)">{{ row.rate }}%</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                <span
+                                                    class="inline-flex items-center px-3 py-1 rounded text-[11px] font-bold uppercase tracking-wide border shadow-sm"
+                                                    :class="getStatusBadgeClass(row.rate)">
+                                                    <span
+                                                        class="w-2 h-2 rounded-full mr-2 shadow-sm border border-black/10"
+                                                        :class="getStatusBgColor(row.rate)"></span>
+                                                    {{ getStatusText(row.rate) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center w-full">
+                        <div class="bg-vividGreen/10 px-5 py-2.5 rounded-xl flex items-center border border-vividGreen/20 shadow-sm">
+                            <i class="ph-fill ph-kanban text-vividGreen mr-2.5 text-xl"></i>
+                            <h2 class="text-lg font-black text-deepSpaceBlue uppercase tracking-widest">Measure Tracking</h2>
+                        </div>
+                        <div class="ml-4 flex-1 h-[2px] bg-slate-200/60 rounded-full"></div>
+                    </div>
+
+                    <div id="anchor-status-overview" class="bg-white rounded-2xl shadow-card border border-slate-100 p-8 overflow-hidden">
+                        <div class="flex justify-between items-center mb-8 border-b border-slate-100 pb-4 card-header-border">
+                            <h3 class="font-extrabold text-xl text-deepSpaceBlue tracking-wide flex items-center uppercase">
+                                <i class="ph-fill ph-chart-polar text-vividGreen mr-2.5 text-2xl"></i>
+                                Status Overview
+                            </h3>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-bold text-slate-500">Year:</span>
+                                <select v-model="selectedOverviewYear" class="bg-slate-50 border border-slate-200 text-deepSpaceBlue text-sm rounded-lg focus:ring-vividGreen focus:border-vividGreen block px-3 py-1.5 font-bold outline-none cursor-pointer hover:border-vividGreen transition-colors">
+                                    <option v-for="y in availableOverviewYears" :key="y" :value="y">{{ y }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-12">
+                            
+                            <div class="relative h-[420px] w-full flex flex-col">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h4 class="text-sm font-black text-slate-700 uppercase tracking-widest">Overall Attributes Savings</h4>
+                                </div>
+                                <div class="flex-1 relative mt-2 mb-8 mx-12">
+                                    <div class="absolute -right-12 -top-10 text-[11px] text-slate-400 font-bold tracking-wider z-10">[Mio RMB]</div>
+
+                                    <div v-for="(tick, i) in chart1Ticks" :key="'c1t_'+i" class="absolute w-full flex items-center z-0 transition-all duration-500" :style="{ bottom: (tick.ratio * 100) + '%' }">
+                                        <div class="w-full border-t" :class="tick.ratio === 0 ? 'border-slate-300' : 'border-slate-100 border-dashed'"></div>
+                                        <span class="absolute -left-12 text-right text-[11px] font-mono font-bold text-slate-400 w-10 translate-y-[-50%]">{{ tick.left }}</span>
+                                        <span class="absolute -right-12 text-left text-[11px] font-mono font-bold text-slate-400 w-10 translate-y-[-50%]">{{ tick.right }}</span>
+                                    </div>
+
+                                    <div class="absolute inset-0 flex items-end justify-between z-10 px-1">
+                                        <div v-for="(col, index) in chart1Columns" :key="'c1b_'+index" class="flex flex-col items-center justify-end h-full relative group" :class="{ 'ml-4 pl-4 border-l-2 border-dashed border-slate-200': col.isDividerBefore }" :style="{ width: ['Total', 'Target'].includes(col.name) ? '8%' : '14%' }">
+                                            <div class="font-mono font-bold text-slate-600 text-[11px] transition-transform group-hover:-translate-y-1 mb-1.5">¥{{ col.total }} Mio</div>
+                                            <div class="w-full flex flex-col justify-end transition-all duration-500 shadow-sm hover:brightness-110" :class="{ 'bar-pattern-overlay opacity-90 overflow-hidden rounded-t-md': ['Total', 'Target'].includes(col.name) }" :style="{ height: col.heightPercent + '%' }">
+                                                <div v-for="seg in col.segments" :key="seg.cat" class="w-full border-b border-white/30 first:rounded-t-md flex flex-col items-center justify-center overflow-hidden leading-none" :style="{ height: (seg.val / col.total * 100) + '%', backgroundColor: seg.color }" :title="seg.cat + ': ' + seg.val">
+                                                    <span class="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] select-none px-0.5">{{ seg.cat }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="absolute top-full pt-3 w-full text-center text-[12px] font-bold transition-colors" :class="['Total', 'Target'].includes(col.name) ? 'text-deepSpaceBlue font-black' : 'text-slate-500 group-hover:text-deepSpaceBlue'">{{ col.name }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative h-[500px] w-full flex flex-col">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h4 class="text-sm font-black text-slate-700 uppercase tracking-widest relative -top-1">Attribute Detail</h4>
+                                    <div class="flex items-center space-x-2 relative -top-3">
+                                        <span class="w-3 h-3 rounded shadow-sm" :style="{ backgroundColor: getDriverColor(selectedCategoryForChart2) }"></span>
+                                        <select v-model="selectedCategoryForChart2" class="bg-white border border-slate-200 text-deepSpaceBlue text-xs rounded-lg focus:ring-vividGreen focus:border-vividGreen block px-2 py-1 font-bold outline-none cursor-pointer hover:border-vividGreen transition-colors shadow-sm">
+                                            <option v-for="cat in categories" :key="'opt_'+cat.code" :value="cat.code">{{ cat.code }} ({{ cat.nameCN }})</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex-1 relative mt-2 mb-24 mx-12">
+                                    <div class="absolute -right-12 -top-10 text-[11px] text-slate-400 font-bold tracking-wider z-10">[Mio RMB]</div>
+
+                                    <div v-for="(tick, i) in chart2Ticks" :key="'c2t_'+i" class="absolute w-full flex items-center z-0 transition-all duration-500" :style="{ bottom: (tick.ratio * 100) + '%' }">
+                                        <div class="w-full border-t" :class="tick.ratio === 0 ? 'border-slate-300' : 'border-slate-100 border-dashed'"></div>
+                                        <span class="absolute -left-12 text-right text-[11px] font-mono font-bold text-slate-400 w-10 translate-y-[-50%]">{{ tick.left }}</span>
+                                        <span class="absolute -right-12 text-left text-[11px] font-mono font-bold text-slate-400 w-10 translate-y-[-50%]">{{ tick.right }}</span>
+                                    </div>
+
+                                    <div class="absolute inset-0 flex items-end justify-between z-10 px-1">
+                                        <div v-for="(col, index) in chart2Columns" :key="'c2b_'+index" class="flex flex-col items-center justify-end h-full relative group" :class="{ 'ml-4 pl-4 border-l-2 border-dashed border-slate-200': col.isDividerBefore }" :style="{ width: ['Total', 'Target'].includes(col.name) ? '8%' : '14%' }">
+                                            <div class="font-mono font-bold text-slate-600 text-[11px] transition-transform group-hover:-translate-y-1 mb-1.5">¥{{ col.val }} Mio</div>
+                                            
+                                            <div v-if="col.measures && col.measures.length > 0" class="w-full flex flex-col justify-end transition-all duration-500 shadow-sm hover:brightness-110" :style="{ height: col.heightPercent + '%' }">
+                                                <div v-for="(m, idx) in col.measures" :key="'m_'+idx"
+                                                     class="w-full border-b border-white/30 first:rounded-t-md flex flex-col items-center justify-center overflow-hidden leading-none"
+                                                     :style="{ height: (m.amount / col.val * 100) + '%', backgroundColor: col.color, filter: 'brightness(' + m.brightness + ')' }"
+                                                     :title="m.name + ': ' + m.amount.toFixed(1)">
+                                                     <span class="text-[9px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] select-none px-0.5 w-full text-center truncate">{{ m.shortName }}</span>
+                                                </div>
+                                            </div>
+                                            <div v-else class="w-full transition-all duration-500 shadow-sm rounded-t-md hover:brightness-110" :class="{ 'bar-pattern-overlay opacity-90': ['Total', 'Target'].includes(col.name) }" :style="{ height: col.heightPercent + '%', backgroundColor: col.color }" :title="col.name + ': ' + col.val"></div>
+                                            
+                                            <div class="absolute top-full pt-3 w-full text-center text-[12px] font-bold transition-colors" :class="['Total', 'Target'].includes(col.name) ? 'text-deepSpaceBlue font-black' : 'text-slate-500 group-hover:text-deepSpaceBlue'">{{ col.name }}</div>
+                                            
+                                            <div v-if="col.measures && col.measures.length > 0" class="absolute top-[calc(100%+32px)] w-full flex flex-col space-y-1 bg-white p-1.5 rounded shadow-sm border border-slate-100 z-20">
+                                                <div v-for="(m, i) in col.measures" :key="i" class="flex justify-between items-center text-[10px] leading-tight" :class="{'border-t border-slate-100 pt-1 mt-0.5': m.name === '4. Other Measures'}">
+                                                    <a v-if="m.name !== '4. Other Measures'" href="javascript:void(0)" class="text-vividGreen hover:underline truncate pr-1" :title="m.name">{{ m.name }}</a>
+                                                    <span v-else class="text-slate-500 truncate pr-1 italic text-slate-400" :title="m.name">{{ m.name }}</span>
+                                                    <span class="font-mono font-bold text-slate-700">{{ m.amount.toFixed(1) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div id="anchor-cost-development"
+                        class="bg-white border border-slate-100 rounded-2xl shadow-card p-8 overflow-hidden text-slate-800 relative">
+                        <div
+                            class="flex justify-between items-end mb-8 border-b border-slate-100 pb-4 card-header-border">
+                            <h3 
+                              class="font-extrabold text-xl tracking-wide text-deepSpaceBlue uppercase flex items-center">
+                                <i class="ph-fill ph-chart-line-up text-vividGreen mr-2.5 text-2xl"></i>
+                                Cost target development 
+                            </h3>
+                        </div>
+
+                        <div class="relative h-[420px] w-full mt-4 flex">
+                            <div class="absolute right-8 -top-3 text-[11px] text-slate-400 font-bold tracking-wider z-10">[Mio RMB]</div>
+                            <div
+                                class="absolute -right-2 top-1/2 -translate-y-1/2 rotate-90 text-[12px] font-bold text-slate-500 tracking-widest whitespace-nowrap">
+                                Cumulative Percentage (%)
+                            </div>
+
+                            <div class="flex-1 relative ml-12 mr-12 mb-16 mt-6">
+                                <div v-for="(val, index) in [500, 400, 300, 200, 100, 0]" :key="'grid_'+val"
+                                    class="absolute w-full flex items-center z-0" :style="{ bottom: (val/5) + '%' }">
+                                    <div class="w-full border-t"
+                                        :class="val === 400 ? 'border-dashed border-brandBlue border-b-2' : (val === 0 ? 'border-slate-300 border-solid' : 'border-slate-200 border-dashed')">
+                                    </div>
+                                    <span
+                                        class="absolute -left-10 text-right text-xs font-mono font-bold text-slate-500 w-8 translate-y-[-50%]">{{
+                                        val }}</span>
+                                    <span v-if="val === 400"
+                                        class="absolute -right-12 text-center text-xs font-mono font-bold bg-[#FAD2AA] text-[#FAAA3C] px-1.5 py-0.5 rounded translate-y-[-50%] w-10">80%</span>
+                                    <span v-else
+                                        class="absolute -right-10 text-left text-xs font-mono font-bold text-slate-500 w-8 translate-y-[-50%]">{{
+                                        val/5 }}%</span>
+                                </div>
+
+                                <div class="absolute inset-0 flex items-end justify-between z-10 px-4">
+                                    <div v-for="(item, index) in paretoDataNew" :key="'bar_'+index"
+                                        class="flex flex-col items-center justify-end h-full relative group w-full">
+                                        <div class="absolute transition-transform group-hover:-translate-y-1 z-20 font-mono font-bold text-slate-600 text-[13px]"
+                                            :style="{ bottom: `calc(${ (item.value / 500) * 100 }% + 8px)` }">
+                                            ¥{{ item.value }} Mio
+                                        </div>
+                                        <div class="w-10 sm:w-14 bg-[#008C82] rounded-t-md shadow-sm transition-all duration-500 hover:brightness-110"
+                                            :style="{ height: (item.value / 500) * 100 + '%' }"></div>
+                                        <div
+                                            class="absolute top-full pt-4 w-full px-1 text-center text-[12px] leading-snug font-bold text-slate-600 group-hover:text-deepSpaceBlue transition-colors break-words">
+                                            {{ item.name }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+                                    class="absolute inset-0 w-full h-full overflow-visible z-20 pointer-events-none">
+                                    <path :d="paretoPathNew" fill="none" stroke="#FAAA3C" stroke-width="2.5"
+                                        vector-effect="non-scaling-stroke" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+
+                                <div class="absolute inset-0 w-full h-full z-30 pointer-events-none px-4">
+                                    <div v-for="(item, index) in paretoDataNew" :key="'dot_'+index"
+                                        class="absolute w-full h-full flex justify-center"
+                                        :style="{ left: (index * (100 / paretoDataNew.length)) + '%', width: (100 / paretoDataNew.length) + '%' }">
+                                        <div class="absolute flex flex-col items-center"
+                                            :style="{ top: (100 - item.percent) + '%' }">
+                                            <div v-if="item.displayPercent"
+                                                class="absolute bottom-3 whitespace-nowrap text-[12px] font-mono font-black text-slate-700 bg-white/60 px-1 rounded">
+                                                {{ item.displayPercent }}
+                                            </div>
+                                            <div
+                                                class="w-2.5 h-2.5 bg-[#FAAA3C] rounded-full border-2 border-white shadow-sm -mt-1">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="absolute top-16 right-12 z-40 bg-white border border-[#E67364] text-center px-4 py-2 shadow-sm rounded-sm">
+                                    <div class="text-[13px] font-bold text-slate-600 mb-0.5">Total</div>
+                                    <div class="text-lg font-black font-mono text-deepSpaceBlue leading-none">¥1,500 Mio
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 引入缓存读取接口 API ---
+        const CostProgramAPI = {
+            // 存储使用的 Keys
+            KEYS: {
+                VOLUMES: 'cost_program_volumes',
+                CATEGORIES: 'cost_program_categories'
+            },
+
+            getVolumes() {
+                try {
+                    const data = localStorage.getItem(this.KEYS.VOLUMES);
+                    return data ? JSON.parse(data) : [];
+                } catch (error) {
+                    console.error("读取 Volumes 数据失败:", error);
+                    return [];
+                }
+            },
+            saveVolumes(volumesData) {
+                try {
+                    localStorage.setItem(this.KEYS.VOLUMES, JSON.stringify(volumesData));
+                    return true;
+                } catch (error) {
+                    console.error("保存 Volumes 数据失败:", error);
+                    return false;
+                }
+            },
+            getCategories() {
+                try {
+                    const data = localStorage.getItem(this.KEYS.CATEGORIES);
+                    return data ? JSON.parse(data) : [];
+                } catch (error) {
+                    console.error("读取 Categories 数据失败:", error);
+                    return [];
+                }
+            },
+            getCategoryById(id) {
+                const categories = this.getCategories();
+                return categories.find(cat => cat.id === id) || null;
+            },
+            saveCategories(categoriesData) {
+                try {
+                    localStorage.setItem(this.KEYS.CATEGORIES, JSON.stringify(categoriesData));
+                    return true;
+                } catch (error) {
+                    console.error("保存 Categories 数据失败:", error);
+                    return false;
+                }
+            },
+            addCategory(newCategory) {
+                const categories = this.getCategories();
+                const maxId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) : 0;
+                newCategory.id = maxId + 1;
+                categories.push(newCategory);
+                return this.saveCategories(categories);
+            },
+            updateCategory(id, updates) {
+                const categories = this.getCategories();
+                const index = categories.findIndex(cat => cat.id === id);
+                if (index !== -1) {
+                    categories[index] = { ...categories[index], ...updates };
+                    return this.saveCategories(categories);
+                }
+                return false;
+            },
+            deleteCategory(id) {
+                let categories = this.getCategories();
+                categories = categories.filter(cat => cat.id !== id);
+                return this.saveCategories(categories);
+            },
+            getAggregatedTarget(yearKey) {
+                const categories = this.getCategories();
+                let total = 0;
+                categories.forEach(cat => {
+                    if (cat.targets) {
+                        Object.values(cat.targets).forEach(companyData => {
+                            total += (Number(companyData[yearKey]) || 0);
+                        });
+                    }
+                });
+                return total;
+            },
+            clearAllData() {
+                localStorage.removeItem(this.KEYS.VOLUMES);
+                localStorage.removeItem(this.KEYS.CATEGORIES);
+            }
+        };
+
+
+        const { createApp, ref, computed, reactive, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // Active Section State for Sidebar Highlight
+                const activeSection = ref('');
+
+                onMounted(() => {
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                activeSection.value = entry.target.id;
+                            }
+                        });
+                    }, {
+                        rootMargin: '-10% 0px -80% 0px' // Adjust to trigger when section is near the top of viewport
+                    });
+
+                    document.querySelectorAll('[id^="anchor-"]').forEach((el) => {
+                        observer.observe(el);
+                    });
+                });
+
+                // Constants
+                const companies = ['VWA', 'DSSO', 'VCTC'];
+
+                const categories = reactive([
+                    { code: 'FPK', nameCN: 'Direct Labor Cost' },
+                    { code: 'BNK', nameCN: 'Indirect Material Cost' },
+                    { code: 'IPK', nameCN: 'Indirect Labor Cost' },
+                    { code: 'SGK', nameCN: 'SG&A Expenses' },
+                    { code: 'MEK', nameCN: 'Material Cost' },
+                    { code: 'AfA', nameCN: 'Depreciation & Amortization' },
+                    { code: 'IGK', nameCN: 'Indirect Manufacturing Cost' },
+                    { code: 'Launch', nameCN: 'Launch Cost' },
+                    { code: 'Other', nameCN: 'Other Cost' },
+                    { code: 'Effects', nameCN: 'Cost Allocation Effects' }
+                ]);
+
+                // Filter State
+                const selectedCompanies = ref([...companies]);
+                const activeCategoryTab = ref('FPK');
+
+                const costDrivers = [
+                    { id: 'fpk', name: 'FPK', color: '#E67364' },
+                    { id: 'bnk', name: 'BNK', color: '#FAAA3C' },
+                    { id: 'ipk', name: 'IPK', color: '#FAD2AA' },
+                    { id: 'sgk', name: 'SGK', color: '#8CBEE6' },
+                    { id: 'mek', name: 'MEK', color: '#C882BE' },
+                    { id: 'afa', name: 'AfA', color: '#DCCDF0' },
+                    { id: 'igk', name: 'IGK', color: '#008C82' },
+                    { id: 'launch', name: 'Launch', color: '#002733' },
+                    { id: 'other', name: 'Other', color: '#FCCD22' },
+                    { id: 'effects', name: 'Effects', color: '#DA0C1F' }
+                ];
+
+                const getDriverColor = (attr) => {
+                    const driver = costDrivers.find(d => d.name.toLowerCase() === attr.toLowerCase() || d.id === attr.toLowerCase());
+                    return driver ? driver.color : '#94A3B8';
+                };
+
+                // --- ========================================== ---
+                // --- NEW LOGIC: Status Overview (Targets Completion)
+                // --- ========================================== ---
+                
+                const selectedOverviewYear = ref('2026');
+                const selectedCategoryForChart2 = ref('FPK');
+                const availableOverviewYears = ['2026', '2027', '2028', '2029', '2030'];
+                const hgCols = ['HG1', 'HG2', 'HG3', 'HG4', 'HG5'];
+                
+                // MOCK DATA for Status Overview Chart
+                const statusOverviewMockData = reactive({});
+                availableOverviewYears.forEach(year => {
+                    statusOverviewMockData[year] = { hgs: {}, target: {} };
+                    hgCols.forEach(hg => {
+                        statusOverviewMockData[year].hgs[hg] = {};
+                        categories.forEach(cat => {
+                            // 随机产生 5 ~ 25 之间的 mock 节约数据
+                            statusOverviewMockData[year].hgs[hg][cat.code] = Math.floor(Math.random() * 20) + 5; 
+                        });
+                    });
+                    categories.forEach(cat => {
+                        // 预期的 Target 理论上应该大于或等于所有 HG 加总
+                        let totalForCat = hgCols.reduce((sum, hg) => sum + statusOverviewMockData[year].hgs[hg][cat.code], 0);
+                        statusOverviewMockData[year].target[cat.code] = Math.floor(totalForCat * (1 + Math.random() * 0.3));
+                    });
+                });
+
+                const currentStatusData = computed(() => {
+                    const yearData = statusOverviewMockData[selectedOverviewYear.value];
+                    const total = {};
+                    categories.forEach(cat => {
+                        total[cat.code] = hgCols.reduce((sum, hg) => sum + yearData.hgs[hg][cat.code], 0);
+                    });
+                    return {
+                        ...yearData.hgs,
+                        Total: total,
+                        Target: yearData.target
+                    };
+                });
+
+                const statusXLabels = ['HG1', 'HG2', 'HG3', 'HG4', 'HG5', 'Total', 'Target'];
+
+                // --- Chart 1 Logic (All Categories) ---
+                const chart1Scales = computed(() => {
+                    let maxL = 0, maxR = 0;
+                    statusXLabels.forEach(col => {
+                        let colSum = categories.reduce((sum, cat) => sum + (currentStatusData.value[col][cat.code] || 0), 0);
+                        if (['Total', 'Target'].includes(col)) {
+                            if (colSum > maxR) maxR = colSum;
+                        } else {
+                            if (colSum > maxL) maxL = colSum;
+                        }
+                    });
+                    let leftMax = Math.ceil((maxL || 1) * 1.2 / 4) * 4 || 4;
+                    let rightMax = Math.ceil((maxR || 1) * 1.2 / 4) * 4 || 4;
+                    return { leftMax, rightMax };
+                });
+
+                const chart1Ticks = computed(() => {
+                    const { leftMax, rightMax } = chart1Scales.value;
+                    return [1, 0.75, 0.5, 0.25, 0].map(ratio => ({
+                        left: Math.round(leftMax * ratio),
+                        right: Math.round(rightMax * ratio),
+                        ratio
+                    }));
+                });
+
+                const chart1Columns = computed(() => {
+                    const { leftMax, rightMax } = chart1Scales.value;
+                    return statusXLabels.map(col => {
+                        const segments = categories.map(cat => ({
+                            cat: cat.code,
+                            val: currentStatusData.value[col][cat.code] || 0,
+                            color: getDriverColor(cat.code)
+                        })).filter(s => s.val > 0);
+                        const total = segments.reduce((sum, s) => sum + s.val, 0);
+                        const isRightSide = ['Total', 'Target'].includes(col);
+                        const maxVal = isRightSide ? rightMax : leftMax;
+                        return { name: col, segments, total, isDividerBefore: col === 'Total', maxVal, heightPercent: (total / maxVal * 100) };
+                    });
+                });
+
+                // --- Chart 2 Logic (Single Category Filter) ---
+                const chart2Scales = computed(() => {
+                    let maxL = 0, maxR = 0;
+                    const catCode = selectedCategoryForChart2.value;
+                    statusXLabels.forEach(col => {
+                        let val = currentStatusData.value[col][catCode] || 0;
+                        if (['Total', 'Target'].includes(col)) {
+                            if (val > maxR) maxR = val;
+                        } else {
+                            if (val > maxL) maxL = val;
+                        }
+                    });
+                    
+                    let leftMax = Math.ceil((maxL || 1) * 1.2 / 4) * 4 || 4;
+                    let rightMax = Math.ceil((maxR || 1) * 1.2 / 4) * 4 || 4;
+                    
+                    return { leftMax, rightMax };
+                });
+
+                const chart2Ticks = computed(() => {
+                    const { leftMax, rightMax } = chart2Scales.value;
+                    return [1, 0.75, 0.5, 0.25, 0].map(ratio => ({
+                        left: Math.round(leftMax * ratio),
+                        right: Math.round(rightMax * ratio),
+                        ratio
+                    }));
+                });
+
+                const chart2Columns = computed(() => {
+                    const catCode = selectedCategoryForChart2.value;
+                    const color = getDriverColor(catCode);
+                    const { leftMax, rightMax } = chart2Scales.value;
+                    return statusXLabels.map(col => {
+                        const val = currentStatusData.value[col][catCode] || 0;
+                        const isRightSide = ['Total', 'Target'].includes(col);
+                        const maxVal = isRightSide ? rightMax : leftMax;
+                        
+                        let measures = [];
+                        if (!isRightSide && val > 0) {
+                            measures = [
+                                { name: '1. Measure 1', shortName: 'Measure 1', amount: val * 0.4, brightness: 1 },
+                                { name: '2. Measure 2', shortName: 'Measure 2', amount: val * 0.25, brightness: 0.85 },
+                                { name: '3. Measure 3', shortName: 'Measure 3', amount: val * 0.15, brightness: 0.7 },
+                                { name: '4. Other Measures', shortName: 'Other Measures', amount: val * 0.2, brightness: 0.55 }
+                            ];
+                        }
+
+                        return { name: col, val, color, isDividerBefore: col === 'Total', maxVal, heightPercent: (val / maxVal * 100), measures };
+                    });
+                });
+
+
+                // --- Volumes Data logic ---
+                const rawVolumes = CostProgramAPI.getVolumes();
+                const initialVolumeData = {};
+
+                if (rawVolumes && rawVolumes.length > 0) {
+                    rawVolumes.forEach(item => {
+                        let p = Number(item.production) || 0;
+                        let s = Number(item.sales) || 0;
+
+                        if (p > 0 && p < 1000) p *= 1000;
+                        if (s > 0 && s < 1000) s *= 1000;
+
+                        initialVolumeData[item.year] = { production: p, sales: s };
+                    });
+                } else {
+                    Object.assign(initialVolumeData, {
+                        2026: { production: 65000, sales: 78000 },
+                        2027: { production: 72000, sales: 89000 },
+                        2028: { production: 85000, sales: 102000 },
+                        2029: { production: 92000, sales: 115000 },
+                        2030: { production: 105000, sales: 130000 }
+                    });
+                }
+
+                const volumeData = reactive(initialVolumeData);
+
+                // --- Y-Axis Dynamic Calculation Logic (Volumes) ---
+                const yAxisTicks = computed(() => {
+                    let minVal = Infinity;
+                    let maxVal = -Infinity;
+
+                    Object.values(volumeData).forEach(item => {
+                        if (item.production > maxVal) maxVal = item.production;
+                        if (item.sales > maxVal) maxVal = item.sales;
+                        if (item.production < minVal) minVal = item.production;
+                        if (item.sales < minVal) minVal = item.sales;
+                    });
+
+                    if (maxVal === -Infinity || minVal === Infinity) {
+                        return { ticks: [140, 120, 100, 80, 60, 40, 20, 0], maxTick: 140000, minTick: 0 };
+                    }
+
+                    if (minVal === maxVal) {
+                        if (minVal === 0) { maxVal = 100; }
+                        else { minVal = minVal * 0.8; maxVal = maxVal * 1.2; }
+                    }
+
+                    const range = maxVal - minVal;
+                    let paddedMin = minVal - range * 0.15;
+                    let paddedMax = maxVal + range * 0.15;
+
+                    if (minVal >= 0 && paddedMin < 0) paddedMin = 0;
+
+                    const newRange = paddedMax - paddedMin;
+                    const targetSegments = 5;
+                    const roughStep = newRange / targetSegments;
+                    const mag = Math.pow(10, Math.floor(Math.log10(roughStep || 1)));
+                    const normalized = roughStep / mag;
+
+                    let step;
+                    if (normalized <= 1.2) step = 1 * mag;
+                    else if (normalized <= 2.5) step = 2 * mag;
+                    else if (normalized <= 5) step = 5 * mag;
+                    else step = 10 * mag;
+
+                    let minTick = Math.floor(paddedMin / step) * step;
+                    let maxTick = Math.ceil(paddedMax / step) * step;
+
+                    const ticks = [];
+                    let currentTick = maxTick;
+                    while (currentTick >= minTick - (step * 0.1)) {
+                        ticks.push(currentTick / 1000);
+                        currentTick -= step;
+                    }
+
+                    if (ticks.length > 0) {
+                        maxTick = ticks[0] * 1000;
+                        minTick = ticks[ticks.length - 1] * 1000;
+                    }
+
+                    return { ticks, maxTick, minTick };
+                });
+
+                // ✅ 修改处: 单独让 VWA 生成在超完成状态
+                const generateMasterData = () => {
+                    const data = {};
+                    companies.forEach(company => {
+                        data[company] = {};
+                        categories.forEach(cat => {
+                            const target = Math.floor(Math.random() * 300) + 50;
+                            let rate = Math.floor(Math.random() * 80) + 40;
+                            
+                            // VWA Rate 限定在 105 到 124 之间，确保 Overachieved
+                            if (company === 'VWA') {
+                                rate = Math.floor(Math.random() * 20) + 105;
+                            }
+
+                            const actual = Math.floor(target * (rate / 100));
+                            data[company][cat.code] = { target, actual };
+                        });
+                    });
+                    return data;
+                };
+
+                const masterSavingsData = reactive(generateMasterData());
+
+                const paretoDataNew = [
+                    { name: 'Supplier Contract Negotiation', value: 450, displayPercent: '30.0%', percent: 30.0 },
+                    { name: 'Optimize Inventory Management', value: 320, displayPercent: '51.3%', percent: 51.3 },
+                    { name: 'Implement Energy Efficiency', value: 280, displayPercent: '70.0%', percent: 70.0 },
+                    { name: 'Streamline Workflows', value: 190, displayPercent: '82.7%', percent: 82.7 },
+                    { name: 'Upgrade Software Systems', value: 110, displayPercent: '90.0%', percent: 90.0 },
+                    { name: 'Reduce Office Supplies Expenses', value: 90, displayPercent: '96.0%', percent: 96.0 },
+                    { name: 'Lower Marketing Costs', value: 60, displayPercent: '100.0%', percent: 100.0 },
+                    { name: 'Other Savings Measures', value: 40, displayPercent: '', percent: 100.0 }
+                ];
+
+                const paretoPathNew = computed(() => {
+                    const points = paretoDataNew.map((item, index) => {
+                        const x = (index + 0.5) * (100 / paretoDataNew.length);
+                        const y = 100 - item.percent;
+                        return `${x},${y}`;
+                    });
+                    return `M ${points.join(' L ')}`;
+                });
+
+                const companyAggregates = computed(() => {
+                    return companies.map(company => {
+                        let totalTarget = 0;
+                        let totalActual = 0;
+                        categories.forEach(cat => {
+                            totalTarget += masterSavingsData[company][cat.code].target;
+                            totalActual += masterSavingsData[company][cat.code].actual;
+                        });
+                        const rate = totalTarget > 0 ? ((totalActual / totalTarget) * 100).toFixed(1) : 0;
+                        return {
+                            name: company,
+                            target: totalTarget,
+                            actual: totalActual,
+                            rate: parseFloat(rate)
+                        };
+                    });
+                });
+
+                const filteredCompanyData = computed(() => {
+                    return companyAggregates.value.filter(c => selectedCompanies.value.includes(c.name));
+                });
+
+                const currentCategoryData = computed(() => {
+                    const catCode = activeCategoryTab.value;
+                    return selectedCompanies.value.map(company => {
+                        const d = masterSavingsData[company][catCode];
+                        const rate = d.target > 0 ? ((d.actual / d.target) * 100).toFixed(1) : 0;
+                        return {
+                            company: company,
+                            target: d.target,
+                            actual: d.actual,
+                            rate: parseFloat(rate)
+                        };
+                    });
+                });
+
+                const isAllCompaniesSelected = computed(() => {
+                    return selectedCompanies.value.length === companies.length;
+                });
+
+                const toggleAllCompanies = () => {
+                    if (isAllCompaniesSelected.value) {
+                        selectedCompanies.value = [];
+                    } else {
+                        selectedCompanies.value = [...companies];
+                    }
+                };
+
+                const getCategoryName = (code) => {
+                    const c = categories.find(cat => cat.code === code);
+                    return c ? `${c.code} (${c.nameCN})` : code;
+                };
+
+                const getCategoryNameCN = (code) => {
+                    const c = categories.find(cat => cat.code === code);
+                    return c ? c.nameCN : '';
+                };
+
+                const formatNumber = (num) => {
+                    return new Intl.NumberFormat('en-US').format(num);
+                };
+
+                const getStatusColor = (rate) => {
+                    if (rate >= 100) return 'bg-trafficGreen';
+                    if (rate >= 80) return 'bg-trafficAmber';
+                    return 'bg-trafficRed';
+                };
+                const getStatusBgColor = (rate) => {
+                    if (rate >= 100) return 'bg-trafficGreen';
+                    if (rate >= 80) return 'bg-trafficAmber';
+                    return 'bg-trafficRed';
+                };
+                const getTextColor = (rate) => {
+                    if (rate >= 100) return 'text-trafficGreen';
+                    if (rate >= 80) return 'text-trafficAmber';
+                    return 'text-trafficRed';
+                };
+                const getStatusBadgeClass = (rate) => {
+                    if (rate >= 100) return 'bg-white text-trafficGreen border-trafficGreen/20';
+                    if (rate >= 80) return 'bg-white text-trafficAmber border-trafficAmber/20';
+                    return 'bg-white text-trafficRed border-trafficRed/20';
+                };
+                const getStatusText = (rate) => {
+                    if (rate >= 100) return 'Overachieved';
+                    if (rate >= 80) return 'Near Target';
+                    return 'Off Target';
+                };
+
+                // --- ========================================== ---
+                // --- Dynamic Cost Competitiveness Overview Mock ---
+                // --- ========================================== ---
+                const selectedOverviewEntity = ref('VWA');
+
+                const costData = computed(() => {
+                    const years = ['2026', '2027', '2028', '2029', '2030'];
+                    const baseMock = {
+                        '2026': { total: 20, values: { fpk: 2, bnk: 2, ipk: 2, sgk: 2, mek: 2, afa: 2, igk: 2, launch: 2, other: 2, effects: 2 } },
+                        '2027': { total: 17, values: { fpk: 1.7, bnk: 1.7, ipk: 1.7, sgk: 1.7, mek: 1.7, afa: 1.7, igk: 1.7, launch: 1.7, other: 1.7, effects: 1.7 } },
+                        '2028': { total: 14, values: { fpk: 1.4, bnk: 1.4, ipk: 1.4, sgk: 1.4, mek: 1.4, afa: 1.4, igk: 1.4, launch: 1.4, other: 1.4, effects: 1.4 } },
+                        '2029': { total: 12, values: { fpk: 1.2, bnk: 1.2, ipk: 1.2, sgk: 1.2, mek: 1.2, afa: 1.2, igk: 1.2, launch: 1.2, other: 1.2, effects: 1.2 } },
+                        '2030': { total: 10, values: { fpk: 1, bnk: 1, ipk: 1, sgk: 1, mek: 1, afa: 1, igk: 1, launch: 1, other: 1, effects: 1 } }
+                    };
+
+                    const factors = {
+                        'VWA': 1.0,
+                        'VCIC': 1.35,
+                        'DSSO': 0.75
+                    };
+                    const entityFactor = factors[selectedOverviewEntity.value] || 1.0;
+
+                    const adjustedMock = {};
+                    years.forEach(y => {
+                        adjustedMock[y] = { total: 0, values: {} };
+                        let currentTotal = 0;
+                        Object.keys(baseMock[y].values).forEach(k => {
+                            // 给不同的 Entity 和数据点加一点差异，让柱状图切换时的过渡看起来更随机自然
+                            let variance = 1;
+                            if (selectedOverviewEntity.value === 'VCIC') variance = (k === 'fpk' || k === 'mek') ? 1.2 : 0.8;
+                            if (selectedOverviewEntity.value === 'DSSO') variance = (k === 'afa' || k === 'sgk') ? 1.3 : 0.85;
+
+                            const v = baseMock[y].values[k] * entityFactor * variance;
+                            adjustedMock[y].values[k] = Number(v.toFixed(2));
+                            currentTotal += v;
+                        });
+                        adjustedMock[y].total = Number(currentTotal.toFixed(1));
+                    });
+                    return adjustedMock;
+                });
+
+                // Y-Axis dynamic bounds calculation for the Cost Chart
+                const costYAxisTicks = computed(() => {
+                    let maxVal = 0;
+                    Object.values(costData.value).forEach(item => {
+                        if (item.total > maxVal) maxVal = item.total;
+                    });
+
+                    // 默认值保护
+                    if (maxVal === 0) return { ticks: [20, 15, 10, 5, 0], maxTick: 25 };
+
+                    // 增加 20% 头部缓冲空间
+                    const paddedMax = maxVal * 1.2;
+
+                    const targetSegments = 4;
+                    const roughStep = paddedMax / targetSegments;
+                    const mag = Math.pow(10, Math.floor(Math.log10(roughStep || 1)));
+                    const normalized = roughStep / mag;
+
+                    let step;
+                    if (normalized <= 1.2) step = 1 * mag;
+                    else if (normalized <= 2.5) step = 2 * mag;
+                    else if (normalized <= 5) step = 5 * mag;
+                    else step = 10 * mag;
+
+                    let maxTick = Math.ceil(paddedMax / step) * step;
+
+                    const ticks = [];
+                    for (let i = maxTick; i >= 0; i -= step) {
+                        ticks.push(i);
+                    }
+
+                    return { ticks, maxTick };
+                });
+                // --- ========================================== ---
+
+
+                const costTarget2026Data = [
+                    {
+                        name: 'HG1', total: 20.0,
+                        segments: [
+                            { val: 5.0, color: '#002733', text: '5.0', textCls: 'text-white' },
+                            { val: 5.0, color: '#008C82', text: '5.0', textCls: 'text-white' },
+                            { val: 5.0, color: '#8CBEE6', text: '5.0', textCls: 'text-deepSpaceBlue' },
+                            { val: 5.0, color: '#DCCDF0', text: '5.0', textCls: 'text-deepSpaceBlue' }
+                        ]
+                    },
+                    {
+                        name: 'HG2', total: 16.0,
+                        segments: [
+                            { val: 4.0, color: '#002733', text: '4.0', textCls: 'text-white' },
+                            { val: 4.0, color: '#008C82', text: '4.0', textCls: 'text-white' },
+                            { val: 4.0, color: '#8CBEE6', text: '4.0', textCls: 'text-deepSpaceBlue' },
+                            { val: 4.0, color: '#DCCDF0', text: '4.0', textCls: 'text-deepSpaceBlue' }
+                        ]
+                    },
+                    {
+                        name: 'HG3', total: 4.0,
+                        segments: [
+                            { val: 1.0, color: '#002733', text: '1.0', textCls: 'text-white' },
+                            { val: 1.0, color: '#008C82', text: '1.0', textCls: 'text-white' },
+                            { val: 1.0, color: '#8CBEE6', text: '1.0', textCls: 'text-deepSpaceBlue' },
+                            { val: 1.0, color: '#DCCDF0', text: '1.0', textCls: 'text-deepSpaceBlue' }
+                        ]
+                    },
+                    {
+                        name: 'HG4', total: 1.0,
+                        segments: [
+                            { val: 0.0, color: '#002733', text: '', floatText: '0.0', floatClass: '-right-8 -top-2' },
+                            { val: 0.0, color: '#008C82', text: '', floatText: '', floatClass: '' },
+                            { val: 1.0, color: '#8CBEE6', text: '1.0', textCls: 'text-deepSpaceBlue' },
+                            { val: 0.0, color: '#DCCDF0', text: '', floatText: '0.0', floatClass: '-left-8 bottom-0' }
+                        ]
+                    },
+                    {
+                        name: 'HG5', total: 2.0,
+                        segments: [
+                            { val: 0.0, color: '#002733', text: '', floatText: '0.0', floatClass: '-right-8 -top-3' },
+                            { val: 1.0, color: '#008C82', text: '1.0', textCls: 'text-white' },
+                            { val: 0.0, color: '#8CBEE6', text: '', floatText: '0.0', floatClass: '-right-8 top-3 text-brandBlue' },
+                            { val: 1.0, color: '#DCCDF0', text: '1.0', textCls: 'text-deepSpaceBlue' }
+                        ]
+                    }
+                ];
+
+                return {
+                    activeSection,
+                    companies,
+                    categories,
+                    selectedCompanies,
+                    activeCategoryTab,
+                    toggleAllCompanies,
+                    isAllCompaniesSelected,
+                    
+                    selectedOverviewYear,
+                    availableOverviewYears,
+                    selectedCategoryForChart2,
+                    chart1Ticks,
+                    chart1Columns,
+                    chart2Ticks,
+                    chart2Columns,
+                    
+                    volumeData,
+                    yAxisTicks,
+                    costDrivers,
+                    getDriverColor,
+                    
+                    // Added Entity data
+                    selectedOverviewEntity,
+                    
+                    costData,
+                    costYAxisTicks,
+                    costTarget2026Data,
+                    filteredCompanyData,
+                    currentCategoryData,
+                    getCategoryName,
+                    getCategoryNameCN,
+                    formatNumber,
+                    getStatusColor,
+                    getStatusBgColor,
+                    getStatusBadgeClass,
+                    getStatusText,
+                    getTextColor,
+                    paretoDataNew,
+                    paretoPathNew
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
